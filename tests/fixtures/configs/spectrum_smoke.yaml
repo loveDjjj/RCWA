@@ -1,0 +1,47 @@
+geometry:
+  unit: um
+  period_um: [2.8, 2.8]
+  pillar_side_um: 1.5
+  pillar_thickness_um: 0.6
+  film_thickness_um: 0.3
+  edge_sharpness: 1000.0
+
+materials:
+  structure_name: ZnS
+  structure_csv: database/ZnS.csv
+  substrate_name: Si
+  substrate_csv: database/Si.csv
+  csv_wavelength_unit: um
+
+scan:
+  wavelength_um:
+    start: 3.0
+    stop: 5.0
+    points: 2
+  angle_deg:
+    start: 0.0
+    stop: 20.0
+    points: 2
+  polarization: TE
+
+rcwa:
+  fourier_order: 1
+  grid: [32, 32]
+  batch_size: 2
+  max_batch_elements: 2
+  linalg_batch_mode: auto
+  linalg_batch_threshold: 512
+  azimuth_deg: 0.0
+
+runtime:
+  cpu: true
+  double_precision: false
+  run_spectrum: true
+  run_angle_sweep: true
+
+output:
+  spectrum_csv: smoke_rcwa_spectrum.csv
+  spectrum_fig: smoke_rcwa_spectrum.png
+  angle_csv: smoke_rcwa_angle_sweep.csv
+  angle_fig: smoke_rcwa_angle_maps.png
+  no_plots: false

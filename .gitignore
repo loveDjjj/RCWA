@@ -1,0 +1,30 @@
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Local IDE state
+.vscode/
+.idea/
+
+# Test scratch output
+tests/.tmp/
+tests/tmp/
+test/
+# Simulation outputs
+pso_outputs/
+fdtdx_out/
+*.fsp
+*.log
+
+# Generated spectra and figures in the project root
+/rcwa_spectrum.csv
+/rcwa_spectrum.png
+/rcwa_angle_sweep.csv
+/rcwa_angle_maps.png
+/smoke_rcwa_spectrum.csv
+/smoke_rcwa_spectrum.png
+/smoke_rcwa_angle_sweep.csv
+/smoke_rcwa_angle_maps.png
+
