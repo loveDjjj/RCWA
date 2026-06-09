@@ -55,14 +55,15 @@ pso:
 rcwa:
   fourier_order: 5
   grid: [96, 96]
-  batch_size: 64
+  batch_size: 300
   azimuth_deg: 0.0
-  linalg_batch_mode: auto
+  linalg_batch_mode: batched
   linalg_batch_threshold: 512
 
 runtime:
   cpu: false
   double_precision: false
+  profile: false
 
 output:
   run_dir: pso_outputs/reflection

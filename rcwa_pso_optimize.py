@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -165,6 +166,7 @@ def evaluate_particles(
 ) -> tuple[np.ndarray, np.ndarray | None]:
     structure_items, film_items, structure_eps, film_eps, substrate_eps = material_data
     rcwa_cfg = cfg["rcwa"]
+    profile = bool(cfg.get("runtime", {}).get("profile", False))
     order = int(rcwa_cfg["fourier_order"])
     geometry = cfg["geometry"]
     period = [float(v) for v in geometry["period_um"]]
@@ -205,6 +207,20 @@ def evaluate_particles(
     penalty_loss = float(cfg.get("target", {}).get("penalty_loss", 1.0e6))
     total = particle_count * wavelength_count
     batch_count = (total + batch_size - 1) // batch_size
+    profile_totals = {
+        "index": 0.0,
+        "rcwa_init": 0.0,
+        "layers": 0.0,
+        "solve": 0.0,
+        "powers": 0.0,
+        "assign": 0.0,
+    }
+
+    def sync_time() -> float:
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
+        return time.perf_counter()
+
     flat_slices = iter_slices(total, batch_size)
     if show_progress:
         flat_slices = tqdm(
@@ -214,6 +230,7 @@ def evaluate_particles(
             leave=False,
         )
     for flat_slice in flat_slices:
+        t0 = sync_time() if profile else 0.0
         flat = torch.arange(flat_slice.start, flat_slice.stop, dtype=torch.int64, device=device)
         particle_idx = flat // wavelength_count
         wavelength_idx = flat % wavelength_count
@@ -224,6 +241,7 @@ def evaluate_particles(
         eps_film = film_eps_t[particle_idx, wavelength_idx]
         eps_substrate = substrate_eps_t_all[wavelength_idx]
         eps_conv = air_conv[None, :, :] + (eps_structure - 1.0)[:, None, None] * pillar_shape_conv[particle_idx]
+        t1 = sync_time() if profile else 0.0
 
         try:
             sim = torch_rcwa.rcwa(
@@ -235,6 +253,7 @@ def evaluate_particles(
                 linalg_batch_mode=rcwa_cfg.get("linalg_batch_mode", "auto"),
                 linalg_batch_threshold=int(rcwa_cfg.get("linalg_batch_threshold", 512)),
             )
+            t2 = sync_time() if profile else 0.0
             sim.add_input_layer(eps=1.0)
             sim.add_output_layer(eps=eps_substrate)
             sim.set_incident_angle(
@@ -243,7 +262,9 @@ def evaluate_particles(
             )
             sim.add_layer_conv(thickness=pillar_thickness_t[particle_idx], eps_conv=eps_conv)
             sim.add_layer(thickness=film_thickness_t[particle_idx], eps=eps_film)
+            t3 = sync_time() if profile else 0.0
             sim.solve_global_smatrix()
+            t4 = sync_time() if profile else 0.0
 
             mask = propagating_order_mask_tensor(
                 freq,
@@ -258,7 +279,16 @@ def evaluate_particles(
             r = 0.5 * (r_te + r_tm)
             if not torch.isfinite(r).all():
                 raise FloatingPointError("non-finite RCWA reflection")
+            t5 = sync_time() if profile else 0.0
             r_all[particle_idx, wavelength_idx] = r
+            t6 = sync_time() if profile else 0.0
+            if profile:
+                profile_totals["index"] += t1 - t0
+                profile_totals["rcwa_init"] += t2 - t1
+                profile_totals["layers"] += t3 - t2
+                profile_totals["solve"] += t4 - t3
+                profile_totals["powers"] += t5 - t4
+                profile_totals["assign"] += t6 - t5
         except Exception as exc:
             failed_particles = torch.unique(particle_idx).detach().cpu().numpy().astype(np.int64)
             invalid[failed_particles] = True
@@ -267,6 +297,13 @@ def evaluate_particles(
                 "RCWA batch failed; penalizing particles "
                 f"{failed_particles.tolist()}: {type(exc).__name__}: {exc}"
             )
+
+    if profile:
+        total_profile = sum(profile_totals.values())
+        timing = ", ".join(
+            f"{name}={value:.3f}s" for name, value in profile_totals.items()
+        )
+        tqdm.write(f"{progress_desc or 'RCWA'} timing: total={total_profile:.3f}s, {timing}")
 
     loss = torch.mean((r_all - target_t[None, :]) ** 2, dim=1)
     if np.any(invalid):

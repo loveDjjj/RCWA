@@ -59,6 +59,15 @@ python rcwa_pso_optimize.py --config configs\pso.yaml
 
 当前默认 PSO 波长网格为 2 到 8 um、共 300 个采样点，用于避开 `period_um = 2.8 um` 对应的 Rayleigh 临界点。
 
+如果需要诊断 GPU 利用率或每个 batch 的耗时分布，可在 `configs/pso.yaml` 中临时打开：
+
+```yaml
+runtime:
+  profile: true
+```
+
+程序会在每代 RCWA 后输出 `index`、`rcwa_init`、`layers`、`solve`、`powers`、`assign` 等阶段耗时。诊断结束后建议改回 `false`，避免频繁 `cuda synchronize` 影响速度。
+
 ## Smoke 检查
 
 ```powershell
@@ -66,4 +75,3 @@ python rcwa_spectrum.py --config tests\fixtures\configs\spectrum_smoke.yaml --no
 python rcwa_pso_optimize.py --config tests\fixtures\configs\pso_smoke.yaml
 python -m pytest -q
 ```
-
