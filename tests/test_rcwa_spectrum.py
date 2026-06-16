@@ -40,7 +40,7 @@ def test_run_spectrum_batches_multiple_wavelengths(monkeypatch):
 
     calls = []
 
-    def fake_simulate_batch_tensor(wavelengths_um, eps_structure, eps_substrate, angles_rad, pols, geometry, rcwa_cfg, runtime_cache, device, sim_dtype, geo_dtype):
+    def fake_simulate_batch_tensor(wavelengths_um, eps_structure, eps_substrate, eps_film, angles_rad, pols, geometry, rcwa_cfg, runtime_cache, device, sim_dtype, geo_dtype):
         calls.append((tuple(wavelengths_um.cpu().numpy().tolist()), tuple(np.rad2deg(angles_rad.cpu().numpy()).tolist()), tuple(pols)))
         size = len(wavelengths_um) * len(angles_rad)
         return {
@@ -115,7 +115,7 @@ def test_run_spectrum_computes_te_and_tm_in_one_batch(monkeypatch):
 
     calls = []
 
-    def fake_simulate_batch_tensor(wavelengths_um, eps_structure, eps_substrate, angles_rad, pols, geometry, rcwa_cfg, runtime_cache, device, sim_dtype, geo_dtype):
+    def fake_simulate_batch_tensor(wavelengths_um, eps_structure, eps_substrate, eps_film, angles_rad, pols, geometry, rcwa_cfg, runtime_cache, device, sim_dtype, geo_dtype):
         calls.append(tuple(pols))
         size = len(wavelengths_um) * len(angles_rad)
         return {
@@ -147,7 +147,7 @@ def test_run_angle_sweep_reuses_zero_degree_spectrum(monkeypatch):
 
     calls = []
 
-    def fake_simulate_batch_tensor(wavelengths_um, eps_structure, eps_substrate, angles_rad, pols, geometry, rcwa_cfg, runtime_cache, device, sim_dtype, geo_dtype):
+    def fake_simulate_batch_tensor(wavelengths_um, eps_structure, eps_substrate, eps_film, angles_rad, pols, geometry, rcwa_cfg, runtime_cache, device, sim_dtype, geo_dtype):
         calls.append(tuple(np.round(np.rad2deg(angles_rad.cpu().numpy()), 12).tolist()))
         size = len(wavelengths_um) * len(angles_rad)
         return {
@@ -186,7 +186,7 @@ def test_run_angle_sweep_splits_angles_by_max_batch_elements(monkeypatch):
 
     calls = []
 
-    def fake_simulate_batch_tensor(wavelengths_um, eps_structure, eps_substrate, angles_rad, pols, geometry, rcwa_cfg, runtime_cache, device, sim_dtype, geo_dtype):
+    def fake_simulate_batch_tensor(wavelengths_um, eps_structure, eps_substrate, eps_film, angles_rad, pols, geometry, rcwa_cfg, runtime_cache, device, sim_dtype, geo_dtype):
         calls.append((tuple(wavelengths_um.cpu().numpy().tolist()), tuple(np.round(np.rad2deg(angles_rad.cpu().numpy()), 12).tolist())))
         size = len(wavelengths_um) * len(angles_rad)
         return {

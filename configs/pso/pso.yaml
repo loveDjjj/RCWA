@@ -1,0 +1,74 @@
+materials:
+  csv_wavelength_unit: um
+  substrate_csv: database/Si.csv
+  structure_candidates:
+    - name: ZnS
+      csv: database/ZnS.csv
+    - name: ZnSe
+      csv: database/ZnSe.csv
+    - name: Si
+      csv: database/Si.csv
+  film_candidates:
+    - name: MgF2
+      csv: database/MgF2.csv
+    - name: YbF3
+      csv: database/YbF3.csv
+    - name: ZnS
+      csv: database/ZnS.csv
+    - name: ZnSe
+      csv: database/ZnSe.csv
+    - name: Si
+      csv: database/Si.csv
+
+geometry:
+  unit: um
+  period_um: [2.8, 2.8]
+  edge_sharpness: 1000.0
+
+scan:
+  wavelength_um:
+    start: 2.0
+    stop: 8.0
+    points: 300
+
+target:
+  type: constant
+  R: 0.0
+  loss: mse
+  penalty_loss: 1000000.0
+
+bounds:
+  fill_factor: [0.25, 0.85]
+  pillar_thickness_um: [0.1, 1.5]
+  film_thickness_um: [0.0, 1.2]
+
+pso:
+  particles: 12
+  iterations: 20
+  seed: 7
+  inertia: 0.72
+  cognitive: 1.49
+  social: 1.49
+  velocity_clamp_fraction: 0.25
+  material_mode: discrete_particle
+
+rcwa:
+  fourier_order: 5
+  grid: [96, 96]
+  batch_size: 32
+  azimuth_deg: 0.0
+  linalg_batch_mode: auto
+  linalg_batch_threshold: 512
+
+runtime:
+  cpu: false
+  double_precision: false
+  profile: false
+  verbose_batches: true
+
+output:
+  run_dir: outputs/pso/reflection
+  save_every_generation: true
+  history_csv: history.csv
+  best_csv: best_spectrum.csv
+  best_json: best_structure.json

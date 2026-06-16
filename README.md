@@ -17,18 +17,27 @@
 RCWA/
   rcwa_spectrum.py          # 单角度光谱和角度扫描入口
   rcwa_pso_optimize.py      # PSO 结构优化入口
+  run_fdtd.py               # FDTD 验证入口
   torch_rcwa/               # 本地批量 RCWA 实现
+  fdtd/                     # FDTD 共享框架
+  fdtd/templates/           # FDTD 模板工程
   configs/
-    spectrum.yaml           # 正式光谱计算配置
-    pso.yaml                # 正式 PSO 优化配置
+    rcwa/
+      spectrum.yaml         # 正式 RCWA 光谱配置
+    pso/
+      pso.yaml              # 正式 PSO 配置
+    fdtd/
+      defaults.yaml         # FDTD 默认配置
+      structure.yaml        # FDTD 结构配置
   database/                 # 材料 n/k CSV 数据
+  outputs/                  # RCWA/PSO/FDTD 输出
   tests/
-    fixtures/configs/       # smoke 测试配置
+    fixtures/               # smoke/调试测试配置
 ```
 
 ## 配置说明
 
-给定结构的光谱计算使用 `configs/spectrum.yaml`。材料字段使用通用命名，不再绑定具体材料名：
+给定结构的光谱计算使用 `configs/rcwa/spectrum.yaml`。材料字段使用通用命名，不再绑定具体材料名：
 
 ```yaml
 materials:
@@ -41,7 +50,7 @@ materials:
 
 光谱计算和 PSO 优化在启动时都会执行 Rayleigh 临界点检查。如果波长网格精确命中临界衍射条件，程序会在 RCWA 求解前停止，并报告波长索引、入射角和衍射阶次。长时间任务开始前，应通过微调波长网格或修改采样点数避开这些临界点。
 
-PSO 优化使用 `configs/pso.yaml`。粒子编码为：
+PSO 优化使用 `configs/pso/pso.yaml`。粒子编码为：
 
 ```text
 [fill_factor, pillar_thickness_um, film_thickness_um, structure_material_idx, film_material_idx]
@@ -53,3 +62,4 @@ PSO 优化使用 `configs/pso.yaml`。粒子编码为：
 
 可直接复制运行的命令见 [RUN_COMMANDS.md](RUN_COMMANDS.md)。
 
+FDTD 重构后的说明见 [fdtd/README.md](</O:/Optics Code/RCWA/fdtd/README.md>)。

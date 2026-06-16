@@ -20,7 +20,7 @@ import yaml
 import torch_rcwa
 
 
-DEFAULT_CONFIG = "configs/spectrum.yaml"
+DEFAULT_CONFIG = "configs/rcwa/spectrum.yaml"
 
 
 def parse_args():
@@ -95,6 +95,10 @@ def stack_summary(cfg: dict):
         "structure_name",
         material_name_from_path(material_path(materials, "structure_csv", "zns_csv")),
     )
+    film_name = materials.get(
+        "film_name",
+        material_name_from_path(material_path(materials, "film_csv", "structure_csv")),
+    )
     substrate_name = materials.get(
         "substrate_name",
         material_name_from_path(material_path(materials, "substrate_csv", "si_csv")),
@@ -102,7 +106,7 @@ def stack_summary(cfg: dict):
     return [
         ("input", "Air", None),
         ("layer", f"patterned {structure_name} square pillar in air", float(geometry["pillar_thickness_um"])),
-        ("layer", f"uniform {structure_name} film", float(geometry["film_thickness_um"])),
+        ("layer", f"uniform {film_name} film", float(geometry["film_thickness_um"])),
         ("output", f"semi-infinite {substrate_name}", None),
     ]
 
@@ -511,15 +515,19 @@ def prepare_scan_tensors(
     wavelengths_um: np.ndarray,
     eps_structure: np.ndarray,
     eps_substrate: np.ndarray,
+    eps_film: np.ndarray | None,
     angles_deg: np.ndarray,
     device: torch.device,
     sim_dtype: torch.dtype,
     geo_dtype: torch.dtype,
 ) -> dict[str, torch.Tensor]:
+    if eps_film is None:
+        eps_film = eps_structure
     return {
         "wavelengths_um": torch.as_tensor(wavelengths_um, dtype=geo_dtype, device=device),
         "eps_structure": torch.as_tensor(eps_structure, dtype=sim_dtype, device=device),
         "eps_substrate": torch.as_tensor(eps_substrate, dtype=sim_dtype, device=device),
+        "eps_film": torch.as_tensor(eps_film, dtype=sim_dtype, device=device),
         "angles_rad": torch.as_tensor(np.deg2rad(angles_deg), dtype=geo_dtype, device=device),
     }
 
@@ -528,6 +536,7 @@ def simulate_batch_tensor(
     wavelengths_um_t: torch.Tensor,
     eps_structure_t_base: torch.Tensor,
     eps_substrate_t_base: torch.Tensor,
+    eps_film_t_base: torch.Tensor | None,
     angles_rad_t: torch.Tensor,
     pols: list[str],
     geometry: dict,
@@ -550,6 +559,9 @@ def simulate_batch_tensor(
     freq = (1.0 / wavelengths_um_t).repeat_interleave(angle_count)
     eps_structure_t = eps_structure_t_base.repeat_interleave(angle_count)
     eps_substrate_t = eps_substrate_t_base.repeat_interleave(angle_count)
+    if eps_film_t_base is None:
+        eps_film_t_base = eps_structure_t_base
+    eps_film_t = eps_film_t_base.repeat_interleave(angle_count)
     angle_rad = angles_rad_t.repeat(wavelength_count)
     patterned_eps_conv = air_conv[None, :, :] + (eps_structure_t - 1.0)[:, None, None] * pillar_shape_conv[None, :, :]
 
@@ -569,7 +581,7 @@ def simulate_batch_tensor(
         azi_ang=torch.full((freq.numel(),), np.deg2rad(azimuth_deg), dtype=geo_dtype, device=device),
     )
     sim.add_layer_conv(thickness=float(geometry["pillar_thickness_um"]), eps_conv=patterned_eps_conv)
-    sim.add_layer(thickness=float(geometry["film_thickness_um"]), eps=eps_structure_t)
+    sim.add_layer(thickness=float(geometry["film_thickness_um"]), eps=eps_film_t)
     sim.solve_global_smatrix()
 
     reflection_mask = propagating_order_mask_tensor(
@@ -607,6 +619,7 @@ def simulate_batch(
     wavelengths_um: np.ndarray,
     eps_structure: np.ndarray,
     eps_substrate: np.ndarray,
+    eps_film: np.ndarray | None,
     angles_deg: np.ndarray,
     pols: list[str],
     geometry: dict,
@@ -616,11 +629,12 @@ def simulate_batch(
     sim_dtype: torch.dtype,
     geo_dtype: torch.dtype,
 ) -> dict[str, dict[str, torch.Tensor]]:
-    scan_tensors = prepare_scan_tensors(wavelengths_um, eps_structure, eps_substrate, angles_deg, device, sim_dtype, geo_dtype)
+    scan_tensors = prepare_scan_tensors(wavelengths_um, eps_structure, eps_substrate, eps_film, angles_deg, device, sim_dtype, geo_dtype)
     return simulate_batch_tensor(
         scan_tensors["wavelengths_um"],
         scan_tensors["eps_structure"],
         scan_tensors["eps_substrate"],
+        scan_tensors["eps_film"],
         scan_tensors["angles_rad"],
         pols,
         geometry,
@@ -665,6 +679,7 @@ def run_spectrum(
     device: torch.device,
     sim_dtype: torch.dtype,
     geo_dtype: torch.dtype,
+    eps_film: np.ndarray | None = None,
 ) -> dict[str, np.ndarray]:
     batch_size = int(rcwa_cfg.get("batch_size", len(wavelengths_um)))
     out_dtype = geo_dtype or torch.float64
@@ -672,6 +687,7 @@ def run_spectrum(
         wavelengths_um,
         eps_structure,
         eps_substrate,
+        eps_film,
         np.array([0.0], dtype=np.float64),
         device,
         sim_dtype,
@@ -688,6 +704,7 @@ def run_spectrum(
             scan_tensors["wavelengths_um"][chunk],
             scan_tensors["eps_structure"][chunk],
             scan_tensors["eps_substrate"][chunk],
+            scan_tensors["eps_film"][chunk],
             scan_tensors["angles_rad"],
             pols,
             geometry,
@@ -722,13 +739,14 @@ def run_angle_sweep(
     device: torch.device,
     sim_dtype: torch.dtype,
     geo_dtype: torch.dtype,
+    eps_film: np.ndarray | None = None,
     spectrum_table: dict[str, np.ndarray] | None = None,
 ) -> dict[str, np.ndarray]:
     batch_size = int(rcwa_cfg.get("batch_size", len(wavelengths_um)))
     out_dtype = geo_dtype or torch.float64
     max_batch_elements = rcwa_cfg.get("max_batch_elements")
     max_batch_elements = None if max_batch_elements is None else int(max_batch_elements)
-    scan_tensors = prepare_scan_tensors(wavelengths_um, eps_structure, eps_substrate, angles_deg, device, sim_dtype, geo_dtype)
+    scan_tensors = prepare_scan_tensors(wavelengths_um, eps_structure, eps_substrate, eps_film, angles_deg, device, sim_dtype, geo_dtype)
     out: dict[str, np.ndarray] = {
         "wavelength_um": np.repeat(wavelengths_um, len(angles_deg)),
         "angle_deg": np.tile(angles_deg, len(wavelengths_um)),
@@ -769,6 +787,7 @@ def run_angle_sweep(
             scan_tensors["wavelengths_um"][chunk],
             scan_tensors["eps_structure"][chunk],
             scan_tensors["eps_substrate"][chunk],
+            scan_tensors["eps_film"][chunk],
             scan_tensors["angles_rad"][global_angle_indices],
             pols,
             geometry,
@@ -797,6 +816,8 @@ def run_angle_sweep(
 
 
 def save_table(path: str | Path, table: dict[str, np.ndarray]):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
     names = list(table.keys())
     data = np.column_stack([table[name] for name in names])
     np.savetxt(path, data, delimiter=",", header=",".join(names), comments="")
@@ -891,6 +912,12 @@ def main():
         wavelengths_um,
         material_wavelength_unit,
     )
+    film_csv = cfg["materials"].get("film_csv")
+    eps_film = (
+        load_material_eps(film_csv, wavelengths_um, material_wavelength_unit)
+        if film_csv
+        else eps_structure
+    )
 
     print(
         f"Using torch_rcwa, device={device}, dtype={sim_dtype}, "
@@ -925,6 +952,7 @@ def main():
                 device,
                 sim_dtype,
                 geo_dtype,
+                eps_film=eps_film,
             )
             save_table(cfg["output"]["spectrum_csv"], spectrum)
 
@@ -941,6 +969,7 @@ def main():
                 device,
                 sim_dtype,
                 geo_dtype,
+                eps_film=eps_film,
                 spectrum_table=spectrum,
             )
             save_table(suffixed_path(cfg["output"]["angle_csv"], angle_suffix), angle_table)

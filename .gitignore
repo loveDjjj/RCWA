@@ -13,10 +13,11 @@ tests/.tmp/
 tests/tmp/
 test/
 # Simulation outputs
-pso_outputs/
+outputs/
 fdtdx_out/
 *.fsp
 *.log
+!fdtd/templates/*.fsp
 
 # Generated spectra and figures in the project root
 /rcwa_spectrum.csv
@@ -27,4 +28,3 @@ fdtdx_out/
 /smoke_rcwa_spectrum.png
 /smoke_rcwa_angle_sweep.csv
 /smoke_rcwa_angle_maps.png
-

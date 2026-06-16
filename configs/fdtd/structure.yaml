@@ -1,0 +1,18 @@
+defaults: defaults.yaml
+
+case_name: candidate_gen8
+
+materials:
+  substrate: Si
+  film: ZnS
+  structure: ZnSe
+
+geometry:
+  period_um: [2.8, 2.8]
+  pillar_side_um: 1.4539445392528654
+  pillar_thickness_um: 1.1596477828439515
+  film_thickness_um: 0.5105733188652881
+  substrate_thickness_um: 5.0
+
+output:
+  run_dir: outputs/fdtd/candidate_gen8

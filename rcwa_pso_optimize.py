@@ -31,7 +31,7 @@ from rcwa_spectrum import (
 )
 
 
-DEFAULT_CONFIG = "configs/pso.yaml"
+DEFAULT_CONFIG = "configs/pso/pso.yaml"
 
 
 def parse_args():
@@ -167,6 +167,7 @@ def evaluate_particles(
     structure_items, film_items, structure_eps, film_eps, substrate_eps = material_data
     rcwa_cfg = cfg["rcwa"]
     profile = bool(cfg.get("runtime", {}).get("profile", False))
+    verbose_batches = bool(cfg.get("runtime", {}).get("verbose_batches", False))
     order = int(rcwa_cfg["fourier_order"])
     geometry = cfg["geometry"]
     period = [float(v) for v in geometry["period_um"]]
@@ -229,7 +230,12 @@ def evaluate_particles(
             desc=progress_desc or "RCWA batches",
             leave=False,
         )
-    for flat_slice in flat_slices:
+    for batch_index, flat_slice in enumerate(flat_slices, start=1):
+        if verbose_batches:
+            tqdm.write(
+                f"{progress_desc or 'RCWA'} batch {batch_index}/{batch_count}: "
+                f"flat samples {flat_slice.start}-{flat_slice.stop - 1}, size={flat_slice.stop - flat_slice.start}"
+            )
         t0 = sync_time() if profile else 0.0
         flat = torch.arange(flat_slice.start, flat_slice.stop, dtype=torch.int64, device=device)
         particle_idx = flat // wavelength_count
@@ -383,6 +389,7 @@ def run_pso(cfg: dict) -> None:
     pbest_loss = np.full(particle_count, np.inf, dtype=np.float64)
     gbest_position = position[0].copy()
     gbest_loss = np.inf
+    gbest_reflection = None
 
     run_dir = Path(cfg["output"]["run_dir"])
     gen_dir = run_dir / "generations"
@@ -392,7 +399,7 @@ def run_pso(cfg: dict) -> None:
     print(f"PSO device={device}, particles={particle_count}, iterations={iterations}")
     print(f"Optimizing normal-incidence reflection over {wavelengths_um[0]:.3g}-{wavelengths_um[-1]:.3g} um")
     for generation in tqdm(range(iterations), desc="PSO generations"):
-        losses, _ = evaluate_particles(
+        losses, spectra = evaluate_particles(
             position,
             wavelengths_um,
             target_r,
@@ -401,7 +408,7 @@ def run_pso(cfg: dict) -> None:
             device,
             sim_dtype,
             geo_dtype,
-            return_spectra=False,
+            return_spectra=True,
             progress_desc=f"generation {generation + 1}/{iterations} RCWA",
         )
         improved = losses < pbest_loss
@@ -411,21 +418,10 @@ def run_pso(cfg: dict) -> None:
         if pbest_loss[best_idx] < gbest_loss:
             gbest_loss = float(pbest_loss[best_idx])
             gbest_position = pbest_position[best_idx].copy()
-
-        _, best_spectrum = evaluate_particles(
-            gbest_position[None, :],
-            wavelengths_um,
-            target_r,
-            cfg,
-            material_data,
-            device,
-            sim_dtype,
-            geo_dtype,
-            return_spectra=True,
-            progress_desc=f"generation {generation + 1}/{iterations} best spectrum",
-            show_progress=False,
-        )
-        best_reflection = best_spectrum[0]
+            gbest_reflection = spectra[best_idx].copy()
+        if gbest_reflection is None:
+            raise RuntimeError("No global-best reflection spectrum is available")
+        best_reflection = gbest_reflection
         payload = structure_payload(gbest_position, gbest_loss, cfg)
         payload["generation"] = generation
         history.append(payload.copy())

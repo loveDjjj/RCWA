@@ -1,0 +1,38 @@
+template:
+  fsp: fdtd/templates/mim_test.fsp
+
+scan:
+  wavelength_um:
+    start: 2.0
+    stop: 14.0
+    points: 300
+  angle_deg: 0.0
+  polarization: both
+
+simulation:
+  dimension: 3D
+  simulation_time_s: 5e-12
+  mesh_accuracy: 3
+  pml_layers: 32
+  mesh_override:
+    film_divisions: 6
+    pillar_divisions: 6
+
+source:
+  injection_axis: y
+  direction: backward
+  offset_above_structure_um: 1.2
+
+monitors:
+  reflection_offset_um: 1.7
+  transmission_y_um: -1.5
+  save_raw_flux: true
+
+runtime:
+  lumapi_dir: C:\Program Files\Lumerical\v202\api\python
+
+output:
+  save_fsp: true
+  save_csv: true
+  save_png: true
+  save_json: true

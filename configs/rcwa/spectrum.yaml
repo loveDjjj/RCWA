@@ -1,0 +1,49 @@
+geometry:
+  unit: um
+  period_um: [2.8, 2.8]
+  pillar_side_um: 1.4539445392528654
+  pillar_thickness_um: 1.1596477828439515
+  film_thickness_um: 0.5105733188652881
+  edge_sharpness: 1000.0
+
+materials:
+  structure_name: ZnSe
+  structure_csv: database/ZnSe.csv
+  film_name: ZnS
+  film_csv: database/ZnS.csv
+  substrate_name: Si
+  substrate_csv: database/Si.csv
+  csv_wavelength_unit: um
+
+scan:
+  wavelength_um:
+    start: 2.0
+    stop: 14.0
+    points: 300
+  angle_deg:
+    start: 0.0
+    stop: 0.0
+    points: 1
+  polarization: both
+
+rcwa:
+  fourier_order: 7
+  grid: [96, 96]
+  batch_size: 32
+  max_batch_elements: 32
+  linalg_batch_mode: auto
+  linalg_batch_threshold: 512
+  azimuth_deg: 0.0
+
+runtime:
+  cpu: false
+  double_precision: false
+  run_spectrum: true
+  run_angle_sweep: false
+
+output:
+  spectrum_csv: outputs/rcwa/spectrum_order.csv
+  spectrum_fig: outputs/rcwa/spectrum_order.png
+  angle_csv: outputs/rcwa/angle_sweep_order.csv
+  angle_fig: outputs/rcwa/angle_maps_order.png
+  no_plots: false
