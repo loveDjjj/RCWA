@@ -12,7 +12,7 @@ scan:
 simulation:
   dimension: 3D
   simulation_time_s: 5e-12
-  mesh_accuracy: 3
+  mesh_accuracy: 4
   pml_layers: 32
   mesh_override:
     film_divisions: 6

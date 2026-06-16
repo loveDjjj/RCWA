@@ -4,14 +4,14 @@ case_name: candidate_gen8
 
 materials:
   substrate: Si
-  film: ZnS
+  film: ZnSe
   structure: ZnSe
 
 geometry:
   period_um: [2.8, 2.8]
-  pillar_side_um: 1.4539445392528654
-  pillar_thickness_um: 1.1596477828439515
-  film_thickness_um: 0.5105733188652881
+  pillar_side_um: 1.529878280548516
+  pillar_thickness_um: 1.1985267927264762
+  film_thickness_um: 0.9385750535924566
   substrate_thickness_um: 5.0
 
 output:

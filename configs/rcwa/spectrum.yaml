@@ -1,16 +1,16 @@
 geometry:
   unit: um
   period_um: [2.8, 2.8]
-  pillar_side_um: 1.4539445392528654
-  pillar_thickness_um: 1.1596477828439515
-  film_thickness_um: 0.5105733188652881
+  pillar_side_um: 1.529878280548516
+  pillar_thickness_um: 1.1985267927264762
+  film_thickness_um: 0.9385750535924566
   edge_sharpness: 1000.0
 
 materials:
   structure_name: ZnSe
   structure_csv: database/ZnSe.csv
-  film_name: ZnS
-  film_csv: database/ZnS.csv
+  film_name: ZnSe
+  film_csv: database/ZnSe.csv
   substrate_name: Si
   substrate_csv: database/Si.csv
   csv_wavelength_unit: um

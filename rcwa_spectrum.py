@@ -828,17 +828,27 @@ def plot_spectrum(path: str | Path, spectrum: dict[str, np.ndarray], pols: list[
     import matplotlib.pyplot as plt
 
     wl = spectrum["wavelength_um"]
-    fig, axes = plt.subplots(1, len(pols), figsize=(7 * len(pols), 4.8), squeeze=False)
-    for ax, pol in zip(axes[0], pols):
-        ax.plot(wl, spectrum[f"R_{pol}"], label=f"{pol} R", linewidth=2)
-        ax.plot(wl, spectrum[f"T_{pol}"], label=f"{pol} T", linewidth=2)
-        ax.plot(wl, spectrum[f"A_{pol}"], label=f"{pol} A", linewidth=2)
-        ax.set_title(f"Normal incidence {pol}")
-        ax.set_xlabel("Wavelength (um)")
-        ax.set_ylabel("R / T / A")
-        ax.set_ylim(-0.05, 1.05)
-        ax.grid(True, alpha=0.3)
-        ax.legend()
+    fig, ax = plt.subplots(figsize=(7.2, 4.8))
+    if set(pols) == {"TE", "TM"}:
+        r = 0.5 * (spectrum["R_TE"] + spectrum["R_TM"])
+        t = 0.5 * (spectrum["T_TE"] + spectrum["T_TM"])
+        a = 0.5 * (spectrum["A_TE"] + spectrum["A_TM"])
+        title = "Normal incidence averaged TE/TM"
+    else:
+        pol = pols[0]
+        r = spectrum[f"R_{pol}"]
+        t = spectrum[f"T_{pol}"]
+        a = spectrum[f"A_{pol}"]
+        title = f"Normal incidence {pol}"
+    ax.plot(wl, r, label="R", linewidth=2)
+    ax.plot(wl, t, label="T", linewidth=2)
+    ax.plot(wl, a, label="A", linewidth=2)
+    ax.set_title(title)
+    ax.set_xlabel("Wavelength (um)")
+    ax.set_ylabel("R / T / A")
+    ax.set_ylim(-0.05, 1.05)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
     fig.tight_layout()
     fig.savefig(path, dpi=300)
     plt.close(fig)
